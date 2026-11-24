@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.pyc
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+
+# Dataset (terlalu besar; cukup cantumkan sumber & versi di README)
+*.xes
+*.xes.gz
+data/
+
+# Hasil ekspor lokal
+exports/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Pengaturan agent lokal
+.claude/settings.local.json
