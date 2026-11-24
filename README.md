@@ -28,9 +28,17 @@ pytest                           # pastikan semua test hijau
 ## Menjalankan
 
 ```bash
-python main.py      # aplikasi
-pytest              # test
+python main.py                                   # aplikasi; impor XES lewat File → Buka XES (Ctrl+O)
+python main.py "data/BPI Challenge 2017.xes.gz"  # langsung memuat file tersebut
+python main.py --demo                            # log sintetis 6 case + hasil dummy (pengembangan)
+pytest                                           # test
 ```
+
+Alur di aplikasi: **Dataset → Overview → Exercise 11.7 / 11.15 & 11.18 / 11.22 → Case Explorer →
+Hasil & Ekspor**. Memuat dan menganalisis berjalan di background (progress bar di status bar),
+jadi jendela tidak membeku. Di halaman *Hasil & Ekspor* tersedia Re-run per analisis,
+Jalankan semua (F5), Reset hasil, dan ekspor CSV (ringkasan, daftar case, evidence).
+*File → Muat ulang file* (Ctrl+R) mengimpor ulang file yang sama untuk uji reproduktibilitas.
 
 ## Dataset
 
