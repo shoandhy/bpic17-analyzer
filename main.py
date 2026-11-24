@@ -38,9 +38,16 @@ def main(argv: list[str] | None = None) -> int:
         from tests.fixtures.dummy_results import make_dummy_results
         from tests.fixtures.tiny_log import make_tiny_log, tiny_durations
 
+        from pathlib import Path
+
+        from core.loaded_log import LoadedLog
+
         df = make_tiny_log()
         durations = tiny_durations(df)
-        window.set_log(df, durations, source="[DEMO] log sintetis 6 case")
+        loaded = LoadedLog(path=Path("[DEMO] tiny_log"), n_cases=int(df["case_id"].nunique()),
+                           n_events=len(df), attributes=["concept:name", "time:timestamp",
+                                                         "lifecycle:transition", "org:resource"])
+        window.set_log(df, durations, source="[DEMO] log sintetis 6 case", loaded=loaded)
         window.add_results(make_dummy_results(df, durations))
     elif args.xes:
         window.load_xes_file(args.xes)

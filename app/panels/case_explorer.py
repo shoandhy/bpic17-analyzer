@@ -9,6 +9,7 @@ Juga berisi ``DataFrameModel`` (model tabel Qt berbasis DataFrame) yang dipakai 
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, Optional
 
 import numpy as np
@@ -29,6 +30,7 @@ from PySide6.QtWidgets import (
 )
 
 from app.panels.base import BasePanel
+from core.loaded_log import LoadedLog
 from core.result import AnalysisResult
 from core.schema import DURATION_NAME
 
@@ -260,7 +262,11 @@ class CaseExplorer(BasePanel):
         splitter.setStretchFactor(1, 5)
         splitter.setSizes([450, 850])
 
+        self.file_label = QLabel("Belum ada file XES dimuat.")
+        self.file_label.setStyleSheet("color: palette(mid);")
+
         layout = QVBoxLayout(self)
+        layout.addWidget(self.file_label)
         layout.addLayout(top)
         layout.addWidget(splitter, 1)
 
@@ -284,6 +290,12 @@ class CaseExplorer(BasePanel):
         self._durations_by_case = self._all_cases.set_index("case_id")[DURATION_NAME]
         self.set_results([])
         self._clear_details("Log dimuat. Pilih case di kiri untuk melihat urutan event.")
+
+    def set_loaded(self, loaded: LoadedLog) -> None:
+        """Kontrak v2: tampilkan file XES aktif agar jelas case berasal dari log mana."""
+        self.file_label.setText(
+            f"File: <b>{Path(loaded.path).name}</b> · {loaded.n_cases} case · {loaded.n_events} event"
+        )
 
     def reset(self) -> None:
         self.set_results([])
@@ -332,6 +344,19 @@ class CaseExplorer(BasePanel):
         self._focus_code = result.code if result is not None else None
         self._select_case_row(case_id)
         self._render_case(case_id)
+
+    def show_case_for(self, case_id: str, code: str) -> None:
+        """Slot untuk sinyal ``open_case_for(case_id, code)`` (kontrak v2).
+
+        Bukti hasil ``code`` disorot. Jika hasil ``code`` belum ada (mis. sudah di-reset),
+        case tetap ditampilkan tanpa sorotan dan diberi keterangan.
+        """
+        result = self._results.get(str(code))
+        self.show_case(case_id, result)
+        if result is None and self._current_case == str(case_id):
+            self.membership_label.setText(
+                self.membership_label.text() + f" · hasil <b>{code}</b> belum tersedia"
+            )
 
     # --- Internal ------------------------------------------------------------------------
     def _rebuild_source_combo(self) -> None:

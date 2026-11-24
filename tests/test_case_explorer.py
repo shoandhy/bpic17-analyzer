@@ -85,6 +85,29 @@ def test_unknown_case_does_not_crash(explorer):
     assert explorer.event_model.rowCount() == 0
 
 
+def test_show_case_for_highlights_given_code(explorer, dummy_results):
+    explorer.show_case_for("c6", "11.18")
+    assert explorer._focus_code == "11.18"
+    assert explorer.event_model.highlighted_rows()
+
+
+def test_show_case_for_unknown_code_shows_case_without_highlight(explorer):
+    explorer.show_case_for("c6", "11.99")
+    assert explorer._focus_code is None
+    assert "11.99" in explorer.membership_label.text()
+    assert explorer.event_model.rowCount() > 0
+
+
+def test_set_loaded_shows_file_info(explorer):
+    from pathlib import Path
+
+    from core.loaded_log import LoadedLog
+
+    explorer.set_loaded(LoadedLog(path=Path("data/BPI Challenge 2017.xes.gz"), n_cases=31509,
+                                  n_events=1202267))
+    assert "BPI Challenge 2017.xes.gz" in explorer.file_label.text()
+
+
 def test_reset_clears_results(explorer):
     explorer.reset()
     assert explorer.results() == []

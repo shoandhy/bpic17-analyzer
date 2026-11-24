@@ -79,6 +79,47 @@ def test_export_all_to_folder(window, qtbot, tmp_path, tiny_log, tiny_durs, dumm
     qtbot.waitUntil(lambda: len(list(tmp_path.glob("*.csv"))) == 3, timeout=5000)
 
 
+def test_open_case_for_highlights_exact_code(window, tiny_log, tiny_durs, dummy_results):
+    window.set_log(tiny_log, tiny_durs, source="tiny")
+    window.add_results(dummy_results)
+    window.panels[3].open_case_for.emit("c6", "11.15")  # bukan 11.7E walau lebih spesifik
+    assert window.stack.currentWidget() is window.explorer
+    assert window.explorer._focus_code == "11.15"
+
+
+def test_on_loaded_passes_loaded_log_to_panels(window, tiny_log, tiny_durs):
+    from pathlib import Path
+
+    from core.loaded_log import LoadedLog
+
+    seen = []
+    for p in window.panels:
+        p.set_loaded = lambda loaded, p=p: seen.append((p.title, loaded))
+    loaded = LoadedLog(path=Path("data/x.xes.gz"), n_cases=6, n_events=28, warnings=["catatan"])
+    window._loading = True
+    window._tasks = 1
+    window._on_loaded(Path("data/x.xes.gz"), (tiny_log, loaded, tiny_durs))
+    assert len(seen) == len(window.panels) and all(l is loaded for _, l in seen)
+    assert window._loaded is loaded and window._df is tiny_log
+    assert "x.xes.gz" in window.log_label.text()
+
+
+def test_rerun_passes_result_params(window, qtbot, monkeypatch, tiny_log, tiny_durs, dummy_results):
+    window.set_log(tiny_log, tiny_durs, source="tiny")
+    old = next(r for r in dummy_results if r.code == "11.22")
+    window.add_results(type(old)(**{**old.__dict__, "params": {"first_activity": "X"}}))
+    calls = []
+
+    def fake_run(df, durations, **params):
+        calls.append(params)
+        return type(old)(**{**old.__dict__, "params": params})
+
+    monkeypatch.setattr(analyses.ex_11_22, "run", fake_run)
+    window.rerun_codes(["11.22"])
+    qtbot.waitUntil(lambda: bool(calls), timeout=5000)
+    assert calls == [{"first_activity": "X"}]  # kontrak v2: run(df, durations, **result.params)
+
+
 @pytest.mark.parametrize("code,module", [
     ("11.7A", "analyses.ex_11_7"), ("11.7E", "analyses.ex_11_7"),
     ("11.15", "analyses.ex_11_15_18"), ("11.18", "analyses.ex_11_15_18"),

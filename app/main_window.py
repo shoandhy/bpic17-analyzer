@@ -6,11 +6,15 @@ Alur wajib (Instruksi Bagian 6): Impor XES -> Overview -> pilih latihan (sidebar
 jalankan -> lihat jawaban -> periksa case -> ekspor. Status bar + progress bar + dialog error.
 
 Tanggung jawab MainWindow:
-    * memuat XES di worker: ``core.loader.load_xes`` lalu ``core.durations.compute_case_durations``;
-    * memanggil ``panel.set_log(df, durations)`` pada setiap panel setelah log dimuat;
-    * ``panel.open_case`` -> ``CaseExplorer.show_case`` (bukti dari hasil panel tsb di-highlight);
+    * memuat XES di worker: ``core.loader.load_xes`` -> ``(df, LoadedLog)`` lalu
+      ``core.durations.compute_case_durations``;
+    * memanggil ``panel.set_log(df, durations)`` lalu ``panel.set_loaded(loaded)`` (kontrak v2)
+      pada setiap panel setelah log dimuat;
+    * ``panel.open_case_for(case_id, code)`` -> ``CaseExplorer.show_case_for`` (bukti hasil
+      ``code`` disorot); ``panel.open_case(case_id)`` (v1) tetap didukung;
     * ``panel.results_ready`` -> tabel "Hasil & Ekspor", Case Explorer, dan ekspor CSV;
-    * Re-run per analisis, Jalankan semua, Reset hasil, dan Muat ulang file tanpa dialog.
+    * Re-run per analisis memakai ``run(df, durations, **result.params)`` (kontrak v2), Jalankan
+      semua, Reset hasil, dan Muat ulang file tanpa dialog.
 
 Panel milik anggota lain yang belum selesai (masih ``NotImplementedError``) diganti
 placeholder sehingga aplikasi tetap bisa dibuka.
@@ -47,6 +51,7 @@ from PySide6.QtWidgets import (
 from app.panels.base import BasePanel
 from app.panels.case_explorer import CaseExplorer, DataFrameModel
 from app.worker import run_in_background
+from core.loaded_log import LoadedLog
 from core.result import AnalysisResult
 from export import csv_export
 
@@ -92,17 +97,18 @@ def _load_pipeline(path: str, progress: Callable[[int, str], None]):
     from core.loader import load_xes
 
     progress(0, "Membaca file XES…")
-    loaded = load_xes(path, progress=progress)
+    df, loaded = load_xes(path, progress=progress)
     progress(95, "Menghitung durasi case…")
-    durations = compute_case_durations(loaded.df)
+    durations = compute_case_durations(df)
     progress(100, "Selesai")
-    return loaded, durations
+    return df, loaded, durations
 
 
-def _run_analysis(module_name: str, df: pd.DataFrame, durations: pd.Series) -> list[AnalysisResult]:
-    """Dijalankan di worker: ``run`` modul analisis dengan parameter default."""
+def _run_analysis(module_name: str, df: pd.DataFrame, durations: pd.Series,
+                  params: Optional[dict[str, Any]] = None) -> list[AnalysisResult]:
+    """Dijalankan di worker: ``run(df, durations, **params)``; params kosong = default modul."""
     module = importlib.import_module(module_name)
-    return _as_list(module.run(df, durations))
+    return _as_list(module.run(df, durations, **(params or {})))
 
 
 class PlaceholderPanel(BasePanel):
@@ -135,6 +141,7 @@ class MainWindow(QMainWindow):
         self._durations: Optional[pd.Series] = None
         self._source: Optional[str] = None
         self._path: Optional[Path] = None
+        self._loaded: Optional[LoadedLog] = None
         self._results: dict[str, AnalysisResult] = {}
         self._panel_codes: dict[int, list[str]] = {}
         self._tasks = 0
@@ -219,6 +226,7 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(panel)
         if panel is not getattr(self, "explorer", None):
             panel.open_case.connect(partial(self._on_open_case, panel))
+            panel.open_case_for.connect(self._on_open_case_for)
             panel.results_ready.connect(partial(self._on_panel_results, panel))
 
     def _build_results_page(self) -> QWidget:
@@ -365,26 +373,33 @@ class MainWindow(QMainWindow):
     def _on_loaded(self, path: Path, payload: Any) -> None:
         self._loading = False
         self._end_busy()
-        loaded, durations = payload
+        df, loaded, durations = payload
         self._path = path
-        self.set_log(loaded.df, durations, source=path.name)
-        warnings = list(getattr(loaded, "warnings", []) or [])
-        if warnings:
-            self._show_info("Peringatan impor", "\n".join(warnings))
+        self.set_log(df, durations, source=path.name, loaded=loaded)
+        if loaded.warnings:
+            self._show_info("Peringatan impor", "\n".join(loaded.warnings))
 
     def _on_load_error(self, message: str, details: str) -> None:
         self._loading = False
         self._end_busy()
         self._report_error("Gagal memuat XES", message, details)
 
-    def set_log(self, df: pd.DataFrame, durations: pd.Series, source: str = "") -> None:
-        """Pasang log aktif ke semua panel (dipakai setelah impor dan oleh mode demo)."""
+    def set_log(self, df: pd.DataFrame, durations: pd.Series, source: str = "",
+                loaded: Optional[LoadedLog] = None) -> None:
+        """Pasang log aktif ke semua panel (dipakai setelah impor dan oleh mode demo).
+
+        Urutan per panel: ``set_log(df, durations)`` lalu, jika ada, ``set_loaded(loaded)``.
+        """
         self._df, self._durations, self._source = df, durations, source
+        self._loaded = loaded
         self._results.clear()
         self._panel_codes.clear()
         n_cases, n_events = int(df["case_id"].nunique()), len(df)
         for panel in self.panels:
             self._safe_panel_call(panel, "set_log", df, durations)
+        if loaded is not None:
+            for panel in self.panels:
+                self._safe_panel_call(panel, "set_loaded", loaded)
         self._refresh_results()
         self.log_label.setText(f"{source} · {n_cases} case · {n_events} event")
         self.setWindowTitle(f"{APP_TITLE} — {source}" if source else APP_TITLE)
@@ -453,6 +468,11 @@ class MainWindow(QMainWindow):
         self.explorer.show_case(case_id, focus)
         self.sidebar.setCurrentRow(self.stack.indexOf(self.explorer))
 
+    def _on_open_case_for(self, case_id: str, code: str) -> None:
+        """Kontrak v2: panel menyebut kode hasil secara eksplisit, jadi tidak perlu menebak."""
+        self.explorer.show_case_for(str(case_id), str(code))
+        self.sidebar.setCurrentRow(self.stack.indexOf(self.explorer))
+
     def _selected_codes(self) -> list[str]:
         rows = sorted({i.row() for i in self.results_view.selectionModel().selectedRows()})
         frame = self.results_model.frame()
@@ -478,21 +498,36 @@ class MainWindow(QMainWindow):
         self.rerun_codes(codes)
 
     def rerun_codes(self, codes: Iterable[str]) -> None:
-        """Jalankan ulang modul analisis untuk kode-kode tersebut (parameter default)."""
-        modules = []
+        """Jalankan ulang modul analisis untuk kode-kode tersebut dengan ``**result.params``.
+
+        Kontrak v2: ``params`` berisi argumen efektif, sehingga re-run memberi hasil identik
+        selama log sama. Satu modul dijalankan sekali walau beberapa kodenya dipilih.
+        """
+        modules: dict[str, dict[str, Any]] = {}
         for code in codes:
             mod = module_for_code(code)
             if mod and mod not in modules:
-                modules.append(mod)
-        for mod in modules:
-            self._run_module(mod, quiet_not_impl=False)
+                r = self._results.get(code)
+                modules[mod] = dict(r.params) if r is not None else {}
+        for mod, params in modules.items():
+            self._run_module(mod, quiet_not_impl=False, params=params)
 
     def run_all(self) -> None:
-        """Jalankan semua modul analisis; modul yang belum siap dilaporkan di status bar."""
-        for mod in ANALYSIS_MODULES:
-            self._run_module(mod, quiet_not_impl=True)
+        """Jalankan semua modul; params hasil sebelumnya dipakai ulang bila ada.
 
-    def _run_module(self, module_name: str, quiet_not_impl: bool) -> None:
+        Modul yang belum siap (NotImplementedError) hanya dilaporkan di status bar.
+        """
+        for mod in ANALYSIS_MODULES:
+            self._run_module(mod, quiet_not_impl=True, params=self._params_for_module(mod))
+
+    def _params_for_module(self, module_name: str) -> dict[str, Any]:
+        for code, r in self._results.items():
+            if module_for_code(code) == module_name:
+                return dict(r.params)
+        return {}
+
+    def _run_module(self, module_name: str, quiet_not_impl: bool,
+                    params: Optional[dict[str, Any]] = None) -> None:
         if self._df is None or self._durations is None:
             self._show_info("Belum ada log", "Muat file XES terlebih dahulu.")
             return
@@ -508,7 +543,7 @@ class MainWindow(QMainWindow):
             self._end_busy()
             self._report_error(f"Analisis {short} gagal", message, details, quiet_not_impl)
 
-        run_in_background(_run_analysis, module_name, self._df, self._durations,
+        run_in_background(_run_analysis, module_name, self._df, self._durations, params or {},
                           on_finished=done, on_error=failed)
 
     # ================================================================== Ekspor ========
