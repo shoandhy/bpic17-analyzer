@@ -31,6 +31,7 @@ Kontrak bersama (ubah hanya lewat kesepakatan): `core/schema.py`, `core/result.p
 - **Dilarang push/commit langsung ke `main`.** Semua perubahan lewat Pull Request.
 - Jika branch sudah ada: checkout lalu pull. Jika belum: buat dari `main` terbaru.
 - Pastikan `git status` bersih sebelum mulai; jangan commit file XES/CSV ekspor.
+- Pesan commit tidak boleh memuat trailer Co-Authored-By atau atribusi AI.
 
 ## Kontrak 1 — DataFrame kanonik (detail: docstring `core/loader.py`)
 | kolom | tipe | aturan |
