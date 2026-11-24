@@ -33,7 +33,7 @@ def make_dummy_results(df: pd.DataFrame, durations: pd.Series) -> list[AnalysisR
                 case_ids=case_ids,
                 per_case=per_case,
                 evidence=evidence.reset_index(drop=True),
-                params={"dummy": True},
+                params={},  # dummy tidak berasal dari run(); kontrak v2: hanya argumen efektif
             )
         )
     return results

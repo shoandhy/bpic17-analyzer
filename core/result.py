@@ -34,8 +34,13 @@ class AnalysisResult:
         evidence: baris event dari DataFrame kanonik yang menjadi bukti; wajib memuat
             ketujuh kolom kanonik (terutama ``case_id`` dan ``orig_idx`` untuk highlight di
             Case Explorer), boleh kolom tambahan (mis. ``role`` = "cancelled"/"accepted").
-        params: parameter yang dipakai (nama aktivitas, nilai lifecycle, ambang, dll.)
-            agar hasil dapat direproduksi.
+        params: argumen kata kunci EFEKTIF yang dipakai ``run`` (kontrak v2): hanya nama
+            parameter yang dikenal modul (kunci ``DEFAULT_PARAMS``), dengan nilai yang benar-
+            benar dipakai — default yang digabung dengan argumen dari pemanggil. Tanpa
+            metadata lain. Syarat reproduktibilitas: ``run(df, durations, **result.params)``
+            harus menghasilkan AnalysisResult yang identik (dipakai tombol Re-run dan diuji
+            ``tests/test_contract.py``). Jika satu ``run`` menghasilkan beberapa
+            AnalysisResult, semuanya membawa ``params`` yang sama.
     """
 
     code: str

@@ -22,7 +22,7 @@ Jalankan: `python main.py`. Test: `pytest`.
 | D | `feat/d-1122-fixtures` | `analyses/ex_11_22.py`, `analyses/optional.py`, `tests/fixtures/make_synthetic.py`, `app/panels/ex1122_panel.py` |
 | E | `feat/e-shell-explorer` | `app/main_window.py`, `app/worker.py`, `app/panels/case_explorer.py`, `export/csv_export.py` |
 
-Kontrak bersama (ubah hanya lewat kesepakatan): `core/schema.py`, `core/result.py`,
+Kontrak bersama (ubah hanya lewat kesepakatan): `core/schema.py`, `core/result.py`, `core/loaded_log.py`,
 `app/panels/base.py`, docstring kontrak di `core/loader.py`, `tests/test_contract.py`,
 `tests/fixtures/tiny_log.py`, `AGENTS.md`. Uji silang di branch `test/<penguji>-uji-<pemilik>`
 (mis. `test/e-uji-a`) dalam `tests/crosscheck/`.
@@ -52,11 +52,19 @@ Validator: `core.schema.check_canonical(df)`.
 `durations`: `pd.Series` index `case_id`, float **hari**, name `duration_days`, =
 max(timestamp) − min(timestamp) dari **SELURUH** event case (`core.durations.compute_case_durations`).
 
+## Kontrak 2b — Impor & `LoadedLog` (v2)
+```python
+def load_xes(path, progress=None) -> tuple[pd.DataFrame, LoadedLog]   # core/loader.py (A)
+```
+`core/loaded_log.py`: `@dataclass(frozen=True) LoadedLog(path, n_cases, n_events, attributes, warnings)`,
+tanpa DataFrame dan tanpa import GUI. MainWindow meneruskannya ke `panel.set_loaded(loaded)`.
+
 ## Kontrak 3 — Analisis
 ```python
 def run(df: pd.DataFrame, durations: pd.Series, **params) -> AnalysisResult | list[AnalysisResult]
 ```
-Setiap modul punya `DEFAULT_PARAMS` (dict). Jangan modifikasi `df` in-place.
+Setiap modul punya `DEFAULT_PARAMS` (dict); nilai efektif = `{**DEFAULT_PARAMS, **params}`.
+Jangan modifikasi `df` in-place.
 
 ## Kontrak 4 — `AnalysisResult` (`core/result.py`)
 `code, title, rule_text, n_cases, denominator, percentage, mean_cycle_days, case_ids, per_case, evidence, params`.
@@ -66,11 +74,18 @@ Setiap modul punya `DEFAULT_PARAMS` (dict). Jangan modifikasi `df` in-place.
 - `per_case` wajib kolom `case_id`, `duration_days`. `evidence` = baris df kanonik (7 kolom,
   `orig_idx` dipakai highlight Case Explorer) + kolom tambahan opsional.
 - `rule_text` = aturan filter dalam bahasa Indonesia, persis seperti yang dijalankan kode.
+- **`params` (v2)** = HANYA argumen efektif yang dipakai `run` (kunci `DEFAULT_PARAMS`, nilai
+  default yang digabung argumen pemanggil), tanpa metadata lain. Wajib:
+  `run(df, durations, **result.params)` menghasilkan AnalysisResult identik. Semua hasil dari
+  satu `run` membawa `params` yang sama. Dipakai tombol Re-run; diuji
+  `tests/test_contract.py::test_params_rerun_identical` (otomatis aktif begitu modul tidak stub).
 
 ## Kontrak 5 — GUI
 - Setiap panel = subclass `app.panels.base.BasePanel` (QWidget) dengan sinyal
-  `open_case(str)` dan `results_ready(object)` (list[AnalysisResult]), method
-  `set_log(df, durations)` dan `reset()`.
+  `open_case_for(str case_id, str code)` (**v2, diutamakan**: buka case dan sorot bukti hasil
+  `code`), `open_case(str)` (v1, tetap ada), dan `results_ready(object)` (list[AnalysisResult]);
+  method `set_log(df, durations)`, `reset()`, dan **`set_loaded(loaded: LoadedLog)`** (v2,
+  opsional, default no-op; dipanggil MainWindow setelah `set_log`).
 - Semua komputasi berat lewat `app.worker.run_in_background` (QThreadPool; sinyal
   `started`, `progress(int,str)`, `finished(object)`, `error(str,str)`), **bukan** di thread UI.
 

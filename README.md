@@ -7,6 +7,8 @@ lengkap dengan aturan filter, daftar case, bukti event, dan ekspor CSV.
 > Status: **kerangka + kontrak kode**. Modul masih berupa stub (`NotImplementedError`) yang
 > akan diisi tiap anggota di branch masing-masing.
 
+Repo: https://github.com/shoandhy/bpic17-analyzer
+
 ## Prasyarat
 
 - **Python 3.12** (versi yang dipakai menguji `requirements.txt`).
@@ -15,8 +17,8 @@ lengkap dengan aturan filter, daftar case, bukti event, dan ekspor CSV.
 ## Instalasi
 
 ```bash
-git clone <url-repo>
-cd <folder-repo>
+git clone https://github.com/shoandhy/bpic17-analyzer.git
+cd bpic17-analyzer
 python3.12 -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
