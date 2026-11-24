@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import ast
+import dataclasses
 import importlib
 import inspect
 from pathlib import Path
+from types import SimpleNamespace
 
 import pandas as pd
 import pytest
 
+from core.loaded_log import LoadedLog
 from core.result import AnalysisResult
 from core.schema import CANONICAL_COLUMNS, SchemaError, check_canonical
 
@@ -122,3 +125,93 @@ def test_panels_follow_base_contract():
         assert issubclass(cls, BasePanel), clsname
         assert hasattr(cls, "open_case") and hasattr(cls, "results_ready")
         assert "set_log" in cls.__dict__, f"{clsname} harus override set_log"
+
+
+# --- Kontrak v2: open_case_for & set_loaded -------------------------------------------
+
+def test_base_panel_v2_signals_and_optional_set_loaded(qtbot):
+    pytest.importorskip("PySide6")
+    from app.panels.base import BasePanel
+
+    class MinimalPanel(BasePanel):
+        def set_log(self, df, durations):
+            pass
+
+    panel = MinimalPanel()
+    qtbot.addWidget(panel)
+    loaded = LoadedLog(path=Path("x.xes"), n_cases=1, n_events=2)
+    assert panel.set_loaded(loaded) is None  # opsional: default no-op, tidak error
+    with qtbot.waitSignal(panel.open_case_for, timeout=1000) as blocker:
+        panel.open_case_for.emit("c6", "11.7E")
+    assert blocker.args == ["c6", "11.7E"]
+    with qtbot.waitSignal(panel.open_case, timeout=1000) as blocker:
+        panel.open_case.emit("c6")  # v1 tetap ada
+    assert blocker.args == ["c6"]
+
+
+def test_loaded_log_fields_and_loader_signature():
+    assert [f.name for f in dataclasses.fields(LoadedLog)] == [
+        "path", "n_cases", "n_events", "attributes", "warnings",
+    ]
+    import core.loader
+
+    assert core.loader.LoadedLog is LoadedLog  # diekspor ulang dari core.loader
+    ret = str(inspect.signature(core.loader.load_xes).return_annotation)
+    assert "DataFrame" in ret and "LoadedLog" in ret  # load_xes -> (df, LoadedLog)
+
+
+# --- Kontrak v2: AnalysisResult.params = argumen efektif -------------------------------
+
+def _as_results(out) -> list[AnalysisResult]:
+    return [out] if isinstance(out, AnalysisResult) else list(out)
+
+
+def _assert_same_result(a: AnalysisResult, b: AnalysisResult) -> None:
+    for f in dataclasses.fields(AnalysisResult):
+        x, y = getattr(a, f.name), getattr(b, f.name)
+        if isinstance(x, pd.DataFrame):
+            pd.testing.assert_frame_equal(x.reset_index(drop=True), y.reset_index(drop=True))
+        else:
+            assert x == y, f"{a.code}.{f.name}: {x!r} != {y!r}"
+
+
+def check_params_contract(module, df: pd.DataFrame, durations: pd.Series) -> None:
+    """Pemeriksa kontrak v2 untuk satu modul analisis (boleh dipakai test anggota)."""
+    first = _as_results(module.run(df, durations))
+    allowed = set(module.DEFAULT_PARAMS)
+    for r in first:
+        extra = set(r.params) - allowed
+        assert not extra, f"{r.code}: params berisi kunci di luar DEFAULT_PARAMS: {extra}"
+        assert r.params == first[0].params, f"{r.code}: params beda antar hasil satu run"
+        again = _as_results(module.run(df, durations, **r.params))
+        twin = {x.code: x for x in again}
+        assert r.code in twin, f"{r.code} hilang saat run(**params)"
+        _assert_same_result(r, twin[r.code])
+
+
+@pytest.mark.parametrize("modname", ANALYSIS_MODULES)
+def test_params_rerun_identical(modname, tiny_log, tiny_durs):
+    mod = importlib.import_module(modname)
+    try:
+        check_params_contract(mod, tiny_log, tiny_durs)
+    except NotImplementedError:
+        pytest.skip(f"{modname}.run belum diimplementasikan")
+
+
+def _fake_module(record_extra: bool):
+    defaults = {"activity": "O_Accepted"}
+
+    def run(df, durations, **params):
+        eff = {**defaults, **params}
+        ids = sorted(df.loc[df["activity"] == eff["activity"], "case_id"].unique())
+        stored = {**eff, "dijalankan_pada": "sekarang"} if record_extra else eff
+        return AnalysisResult("F", "f", "f", n_cases=len(ids), denominator=df["case_id"].nunique(),
+                              case_ids=list(ids), params=stored)
+
+    return SimpleNamespace(run=run, DEFAULT_PARAMS=defaults)
+
+
+def test_params_checker_accepts_compliant_and_rejects_extra_keys(tiny_log, tiny_durs):
+    check_params_contract(_fake_module(record_extra=False), tiny_log, tiny_durs)
+    with pytest.raises(AssertionError, match="di luar DEFAULT_PARAMS"):
+        check_params_contract(_fake_module(record_extra=True), tiny_log, tiny_durs)

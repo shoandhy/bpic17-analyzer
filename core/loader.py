@@ -48,11 +48,12 @@ lalu bagikan daftarnya ke kelompok.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Optional
 
 import pandas as pd
+
+from core.loaded_log import LoadedLog  # noqa: F401  (diekspor ulang; kontrak v2)
 
 #: Callback progres: (persen 0-100, pesan). Disediakan oleh app/worker.py.
 ProgressCallback = Callable[[int, str], None]
@@ -65,24 +66,16 @@ class LogValidationError(ValueError):
     """
 
 
-@dataclass
-class LoadedLog:
-    """Hasil impor XES. Pemilik: Anggota A."""
-
-    df: pd.DataFrame                      # DataFrame kanonik (lihat docstring modul)
-    path: Path                            # path file XES
-    n_cases: int
-    n_events: int
-    attributes: list[str] = field(default_factory=list)  # atribut event yang tersedia
-    has_lifecycle: bool = False
-    has_resource: bool = False
-    warnings: list[str] = field(default_factory=list)    # peringatan non-fatal
-
-
-def load_xes(path: str | Path, progress: Optional[ProgressCallback] = None) -> LoadedLog:
+def load_xes(
+    path: str | Path, progress: Optional[ProgressCallback] = None
+) -> tuple[pd.DataFrame, LoadedLog]:
     """Impor file XES dengan PM4Py lalu ubah ke DataFrame kanonik.
 
     Pemilik: Anggota A. Dipanggil lewat app/worker.py (bukan di thread UI).
+
+    Mengembalikan ``(df, loaded)``: ``df`` = DataFrame kanonik (lihat docstring modul),
+    ``loaded`` = ``core.loaded_log.LoadedLog`` (path, n_cases, n_events, attributes,
+    warnings) yang diteruskan MainWindow ke ``BasePanel.set_loaded``.
     Raise ``LogValidationError`` untuk file rusak / atribut wajib hilang.
     """
     raise NotImplementedError("Anggota A: core.loader.load_xes")
