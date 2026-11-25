@@ -1,0 +1,162 @@
+{
+  "description": "Nilai yang semestinya untuk log sintetis BPIC17 (mencakup semua 8 skenario Instruksi Bagian 8 + edge case tambahan untuk 11.18, 11.22, tie-break, dan OPT).",
+  "n_cases": 12,
+  "n_events": 47,
+  "case_durations_days": {
+    "accepted_twice": 10.0,
+    "cancel_middle": 5.0,
+    "refused_and_accepted": 8.0,
+    "fraud_scheduled_twice_one_complete": 4.0,
+    "fraud_two_complete_diff_resource": 6.0,
+    "fraud_two_complete_same_resource": 12.0,
+    "cancel_then_other_then_accepted": 20.0,
+    "accepted_before_cancel_only": 15.0,
+    "ends_with_cancel_only": 60.0,
+    "fraud_missing_resource": 45.0,
+    "cancel_multi_then_accepted": 50.0,
+    "same_timestamp_tiebreak": 10.0
+  },
+  "scenarios": {
+    "accepted_twice": "Bag. 8 #1: Satu case memiliki O_Accepted dua kali -> 11.7C menghitung case satu kali.",
+    "cancel_middle": "Bag. 8 #2: O_Cancelled di tengah dan ada event sesudahnya -> 11.7E tidak menganggapnya canceled.",
+    "refused_and_accepted": "Bag. 8 #3: Memiliki O_Refused dan O_Accepted -> lolos kedua filter contains (11.7C & 11.7D).",
+    "fraud_scheduled_twice_one_complete": "Bag. 8 #4: W_Assess Potential Fraud dijadwalkan 2x tetapi complete hanya 1x -> tidak lolos 11.15.",
+    "fraud_two_complete_diff_resource": "Bag. 8 #5: Dua complete W_Assess Potential Fraud dengan resource berbeda -> lolos 11.15, tidak lolos 11.18.",
+    "fraud_two_complete_same_resource": "Bag. 8 #6: Dua complete W_Assess Potential Fraud oleh resource sama -> lolos 11.15 dan 11.18.",
+    "cancel_then_other_then_accepted": "Bag. 8 #7: O_Cancelled diikuti aktivitas lain lalu O_Accepted -> lolos 11.22 meski tidak bertetangga.",
+    "accepted_before_cancel_only": "Bag. 8 #8: O_Accepted mendahului O_Cancelled tanpa accepted sesudahnya -> tidak lolos 11.22 (lolos 11.7E).",
+    "ends_with_cancel_only": "Edge case: Berakhir O_Cancelled tanpa O_Accepted (60 hari) -> lolos 11.7E & OPT.slow, tidak lolos 11.22.",
+    "fraud_missing_resource": "Edge case: Dua complete dengan resource kosong/NA (tepat 45 hari) -> lolos 11.15 & OPT.slow, tidak lolos 11.18.",
+    "cancel_multi_then_accepted": "Edge case: Beberapa O_Cancelled lalu beberapa O_Accepted (50 hari) -> 11.22 hitung 1x, bukti a pertama & b terakhir, OPT.slow.",
+    "same_timestamp_tiebreak": "Edge case: O_Accepted dan O_Cancelled ber-timestamp sama (O_Accepted lebih dulu di file) -> lolos 11.7E, tidak lolos 11.22."
+  },
+  "exercises": {
+    "11.7A": {
+      "n_cases": 12,
+      "denominator": 12,
+      "case_ids": [
+        "accepted_before_cancel_only",
+        "accepted_twice",
+        "cancel_middle",
+        "cancel_multi_then_accepted",
+        "cancel_then_other_then_accepted",
+        "ends_with_cancel_only",
+        "fraud_missing_resource",
+        "fraud_scheduled_twice_one_complete",
+        "fraud_two_complete_diff_resource",
+        "fraud_two_complete_same_resource",
+        "refused_and_accepted",
+        "same_timestamp_tiebreak"
+      ],
+      "mean_cycle_days": 20.416666666666668
+    },
+    "11.7B": {
+      "n_cases": 12,
+      "denominator": 12,
+      "case_ids": [
+        "accepted_before_cancel_only",
+        "accepted_twice",
+        "cancel_middle",
+        "cancel_multi_then_accepted",
+        "cancel_then_other_then_accepted",
+        "ends_with_cancel_only",
+        "fraud_missing_resource",
+        "fraud_scheduled_twice_one_complete",
+        "fraud_two_complete_diff_resource",
+        "fraud_two_complete_same_resource",
+        "refused_and_accepted",
+        "same_timestamp_tiebreak"
+      ],
+      "mean_cycle_days": 20.416666666666668
+    },
+    "11.7C": {
+      "n_cases": 6,
+      "denominator": 12,
+      "case_ids": [
+        "accepted_before_cancel_only",
+        "accepted_twice",
+        "cancel_multi_then_accepted",
+        "cancel_then_other_then_accepted",
+        "refused_and_accepted",
+        "same_timestamp_tiebreak"
+      ],
+      "mean_cycle_days": 18.833333333333332
+    },
+    "11.7D": {
+      "n_cases": 1,
+      "denominator": 12,
+      "case_ids": [
+        "refused_and_accepted"
+      ],
+      "mean_cycle_days": 8.0
+    },
+    "11.7E": {
+      "n_cases": 3,
+      "denominator": 12,
+      "case_ids": [
+        "accepted_before_cancel_only",
+        "ends_with_cancel_only",
+        "same_timestamp_tiebreak"
+      ],
+      "mean_cycle_days": 28.333333333333332
+    },
+    "11.15": {
+      "n_cases": 3,
+      "denominator": 12,
+      "case_ids": [
+        "fraud_missing_resource",
+        "fraud_two_complete_diff_resource",
+        "fraud_two_complete_same_resource"
+      ],
+      "mean_cycle_days": 21.0
+    },
+    "11.18": {
+      "n_cases": 1,
+      "denominator": 12,
+      "case_ids": [
+        "fraud_two_complete_same_resource"
+      ],
+      "mean_cycle_days": 12.0
+    },
+    "11.22": {
+      "n_cases": 2,
+      "denominator": 12,
+      "case_ids": [
+        "cancel_multi_then_accepted",
+        "cancel_then_other_then_accepted"
+      ],
+      "mean_cycle_days": 35.0,
+      "percentage": 16.666666666666664
+    },
+    "OPT.fast": {
+      "n_cases": 9,
+      "denominator": 12,
+      "case_ids": [
+        "accepted_before_cancel_only",
+        "accepted_twice",
+        "cancel_middle",
+        "cancel_then_other_then_accepted",
+        "fraud_scheduled_twice_one_complete",
+        "fraud_two_complete_diff_resource",
+        "fraud_two_complete_same_resource",
+        "refused_and_accepted",
+        "same_timestamp_tiebreak"
+      ],
+      "mean_cycle_days": 10.0,
+      "percentage": 75.0,
+      "threshold_days": 45.0
+    },
+    "OPT.slow": {
+      "n_cases": 3,
+      "denominator": 12,
+      "case_ids": [
+        "cancel_multi_then_accepted",
+        "ends_with_cancel_only",
+        "fraud_missing_resource"
+      ],
+      "mean_cycle_days": 51.666666666666664,
+      "percentage": 25.0,
+      "threshold_days": 45.0
+    }
+  }
+}
