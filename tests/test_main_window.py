@@ -18,10 +18,48 @@ def window(qtbot, monkeypatch):
     return w
 
 
-def test_opens_even_when_panels_are_stubs(window):
+def test_sidebar_order(window):
     titles = [window.sidebar.item(i).text() for i in range(window.sidebar.count())]
-    assert titles[0] == "Dataset" and titles[-2:] == ["Case Explorer", "Hasil & Ekspor"]
-    assert any(isinstance(p, PlaceholderPanel) for p in window.panels)
+    assert titles == [
+        "Impor Dataset",
+        "Ringkasan Log",
+        "11.7 · Status Aplikasi",
+        "11.15 & 11.18 · Cek Fraud Berulang",
+        "11.22 · Batal lalu Diterima",
+        "Case Explorer",
+        "Hasil & Ekspor",
+    ]
+
+
+def test_opens_even_when_a_panel_is_stub_or_broken(qtbot, monkeypatch):
+    """Panel yang masih NotImplementedError atau error lain diganti placeholder, app tetap terbuka."""
+    import sys
+    import types
+
+    from app.panels.base import BasePanel
+
+    class StubPanel(BasePanel):
+        def __init__(self, parent=None):
+            raise NotImplementedError("stub uji")
+
+    class BrokenPanel(BasePanel):
+        def __init__(self, parent=None):
+            raise RuntimeError("rusak uji")
+
+    fake = types.ModuleType("fake_panels_for_test")
+    fake.StubPanel, fake.BrokenPanel = StubPanel, BrokenPanel
+    monkeypatch.setitem(sys.modules, "fake_panels_for_test", fake)
+    monkeypatch.setattr(
+        "app.main_window.PANEL_SPECS",
+        [
+            ("fake_panels_for_test", "StubPanel", "Stub", "X"),
+            ("fake_panels_for_test", "BrokenPanel", "Broken", "Y"),
+        ],
+    )
+    w = MainWindow()
+    qtbot.addWidget(w)
+    assert [type(p) for p in w.panels[:2]] == [PlaceholderPanel, PlaceholderPanel]
+    assert w.panels[-1] is w.explorer
 
 
 def test_results_flow_and_reset(window, tiny_log, tiny_durs, dummy_results):

@@ -59,11 +59,11 @@ APP_TITLE = "BPIC17 Event Log Analyzer"
 
 #: (modul, kelas, judul sidebar, pemilik) — urutan = urutan alur kerja.
 PANEL_SPECS: list[tuple[str, str, str, str]] = [
-    ("app.panels.dataset_panel", "DatasetPanel", "Dataset", "A"),
-    ("app.panels.overview_panel", "OverviewPanel", "Overview", "A"),
-    ("app.panels.ex117_panel", "Ex117Panel", "Exercise 11.7", "B"),
-    ("app.panels.ex1115_1118_panel", "Ex1115_1118Panel", "Exercise 11.15 & 11.18", "C"),
-    ("app.panels.ex1122_panel", "Ex1122Panel", "Exercise 11.22", "D"),
+    ("app.panels.dataset_panel", "DatasetPanel", "Impor Dataset", "A"),
+    ("app.panels.overview_panel", "OverviewPanel", "Ringkasan Log", "A"),
+    ("app.panels.ex117_panel", "Ex117Panel", "11.7 · Status Aplikasi", "B"),
+    ("app.panels.ex1115_1118_panel", "Ex1115_1118Panel", "11.15 & 11.18 · Cek Fraud Berulang", "C"),
+    ("app.panels.ex1122_panel", "Ex1122Panel", "11.22 · Batal lalu Diterima", "D"),
 ]
 
 #: Modul analisis dalam urutan "Jalankan semua".
