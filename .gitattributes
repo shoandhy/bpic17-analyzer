@@ -1,0 +1,4 @@
+# Skrip peluncur: .bat wajib CRLF agar cmd.exe membaca label/goto dengan benar,
+# .sh wajib LF agar bash di Linux/macOS tidak gagal.
+*.bat text eol=crlf
+*.sh  text eol=lf

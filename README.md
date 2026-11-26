@@ -27,6 +27,14 @@ pytest                           # pastikan semua test hijau
 
 ## Menjalankan
 
+Cara paling mudah (Linux/macOS): `./run.sh`. Skrip ini membuat `.venv` dan menginstal dependency
+saat pertama kali, lalu membuka aplikasi dengan `data/BPI Challenge 2017.xes.gz` jika file itu ada.
+`./run.sh --demo` membuka log sintetis kecil tanpa dataset.
+Windows: double-click `run.bat` atau jalankan `run.bat` / `run.bat --demo` dari Command Prompt
+(butuh Python 3.12 dari python.org).
+
+Manual:
+
 ```bash
 python main.py                                   # aplikasi; impor XES lewat File → Buka XES (Ctrl+O)
 python main.py "data/BPI Challenge 2017.xes.gz"  # langsung memuat file tersebut
