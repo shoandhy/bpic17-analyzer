@@ -32,6 +32,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
     QAbstractItemView,
+    QApplication,
     QFileDialog,
     QHBoxLayout,
     QHeaderView,
@@ -50,6 +51,7 @@ from PySide6.QtWidgets import (
 
 from app.panels.base import BasePanel
 from app.panels.case_explorer import CaseExplorer, DataFrameModel
+from app.theme import apply_theme
 from app.worker import run_in_background
 from core.loaded_log import LoadedLog
 from core.result import AnalysisResult
@@ -135,6 +137,7 @@ class MainWindow(QMainWindow):
 
     def __init__(self) -> None:
         super().__init__()
+        apply_theme(QApplication.instance())
         self.setWindowTitle(APP_TITLE)
         self.resize(1320, 820)
         self._df: Optional[pd.DataFrame] = None
@@ -187,7 +190,10 @@ class MainWindow(QMainWindow):
 
     def _build_ui(self) -> None:
         self.sidebar = QListWidget()
-        self.sidebar.setMaximumWidth(230)
+        self.sidebar.setObjectName("Sidebar")
+        self.sidebar.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.sidebar.setMinimumWidth(240)
+        self.sidebar.setMaximumWidth(260)
         self.stack = QStackedWidget()
 
         for modname, clsname, title, owner in PANEL_SPECS:
@@ -221,6 +227,9 @@ class MainWindow(QMainWindow):
         return panel
 
     def _add_page(self, panel: BasePanel, title: str) -> None:
+        if panel.layout() is not None:
+            panel.layout().setContentsMargins(16, 12, 16, 12)
+            panel.layout().setSpacing(12)
         self.panels.append(panel)
         self.sidebar.addItem(title)
         self.stack.addWidget(panel)
@@ -250,6 +259,7 @@ class MainWindow(QMainWindow):
         self.btn_open = QPushButton("Buka case di Case Explorer")
         self.btn_open.clicked.connect(self._open_selected_in_explorer)
         self.btn_run_all = QPushButton("Jalankan semua")
+        self.btn_run_all.setProperty("variant", "primary")
         self.btn_run_all.clicked.connect(self.run_all)
         self.btn_reset = QPushButton("Reset hasil")
         self.btn_reset.clicked.connect(self.reset_results)
@@ -273,6 +283,8 @@ class MainWindow(QMainWindow):
                       "daftar case hasil tersebut di Case Explorer.")
         info.setWordWrap(True)
         layout = QVBoxLayout(page)
+        layout.setContentsMargins(16, 12, 16, 12)
+        layout.setSpacing(12)
         layout.addWidget(QLabel("<h3>Hasil analisis & ekspor</h3>"))
         layout.addWidget(info)
         layout.addWidget(self.results_view, 1)

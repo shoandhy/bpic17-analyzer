@@ -28,9 +28,11 @@ def main(argv: list[str] | None = None) -> int:
     from PySide6.QtWidgets import QApplication
 
     from app.main_window import MainWindow
+    from app.theme import apply_theme
 
     app = QApplication(sys.argv[:1])
     app.setApplicationName("BPIC17 Event Log Analyzer")
+    apply_theme(app)
     window = MainWindow()
     window.show()
 

@@ -13,7 +13,7 @@ from PySide6.QtCore import QModelIndex, Qt
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QCheckBox,
-    QGroupBox,
+    QFrame,
     QHBoxLayout,
     QHeaderView,
     QLabel,
@@ -26,7 +26,18 @@ from PySide6.QtWidgets import (
 
 from app.panels.base import BasePanel
 from app.panels.case_explorer import DataFrameModel
+from app.theme import INK, LAUNCH_ORANGE, SLATE
 from core.durations import compute_overview
+
+
+def _metric_card(label: QLabel) -> QFrame:
+    card = QFrame()
+    card.setProperty("card", True)
+    lay = QVBoxLayout(card)
+    lay.setContentsMargins(14, 12, 14, 12)
+    label.setWordWrap(True)
+    lay.addWidget(label)
+    return card
 
 
 class OverviewPanel(BasePanel):
@@ -41,22 +52,31 @@ class OverviewPanel(BasePanel):
             columns=["case_id", "n_events", "duration_days"]
         )
 
-        # --- Metrik ringkasan ---
-        metrics_box = QGroupBox("Ringkasan Event Log")
-        metrics_row = QHBoxLayout(metrics_box)
-        self.lbl_cases = QLabel("Total Case: -")
-        self.lbl_events = QLabel("Total Event: -")
-        self.lbl_range = QLabel("Rentang Waktu: -")
-        self.lbl_mean_cycle = QLabel("Mean Cycle Time: -")
+        kicker = QLabel("F02 · RINGKASAN EVENT LOG")
+        kicker.setStyleSheet(f"color: {LAUNCH_ORANGE}; font-size: 11px; font-weight: 600;")
+        heading = QLabel("Overview Event Log")
+        heading.setStyleSheet(f"color: {INK}; font-size: 22px; font-weight: 600;")
+
+        # --- Metrik ringkasan (kartu putih datar di atas Studio Mist) ---
+        metrics_row = QHBoxLayout()
+        metrics_row.setSpacing(12)
+        self.lbl_cases = QLabel("Total Case\n-")
+        self.lbl_events = QLabel("Total Event\n-")
+        self.lbl_range = QLabel("Rentang Waktu (UTC)\n-")
+        self.lbl_mean_cycle = QLabel("Mean Cycle Time\n-")
         for lbl in (self.lbl_cases, self.lbl_events, self.lbl_range, self.lbl_mean_cycle):
-            lbl.setWordWrap(True)
-            metrics_row.addWidget(lbl, 1)
+            metrics_row.addWidget(_metric_card(lbl), 1)
 
         # --- Kiri: Frekuensi Aktivitas ---
-        act_widget = QWidget()
+        act_widget = QFrame()
+        act_widget.setProperty("card", True)
         act_layout = QVBoxLayout(act_widget)
+        act_layout.setContentsMargins(14, 12, 14, 12)
+        act_layout.setSpacing(8)
         act_header = QHBoxLayout()
-        act_header.addWidget(QLabel("<b>Frekuensi Aktivitas</b>"))
+        act_title = QLabel("Frekuensi Aktivitas")
+        act_title.setStyleSheet(f"color: {INK}; font-size: 15px; font-weight: 600;")
+        act_header.addWidget(act_title)
         self.chk_lifecycle = QCheckBox("Sertakan lifecycle")
         self.chk_lifecycle.toggled.connect(self._refresh_activity_table)
         act_header.addStretch(1)
@@ -72,6 +92,7 @@ class OverviewPanel(BasePanel):
         )
         self.act_view = QTableView()
         self.act_view.setModel(self.act_model)
+        self.act_view.setAlternatingRowColors(True)
         self.act_view.setSortingEnabled(True)
         self.act_view.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.act_view.verticalHeader().setVisible(False)
@@ -84,10 +105,15 @@ class OverviewPanel(BasePanel):
         act_layout.addWidget(self.act_view, 1)
 
         # --- Kanan: Tabel Durasi per Case (bisa dicari) ---
-        case_widget = QWidget()
+        case_widget = QFrame()
+        case_widget.setProperty("card", True)
         case_layout = QVBoxLayout(case_widget)
+        case_layout.setContentsMargins(14, 12, 14, 12)
+        case_layout.setSpacing(8)
         case_header = QHBoxLayout()
-        case_header.addWidget(QLabel("<b>Durasi per Case (hari)</b>"))
+        case_title = QLabel("Durasi per Case (hari)")
+        case_title.setStyleSheet(f"color: {INK}; font-size: 15px; font-weight: 600;")
+        case_header.addWidget(case_title)
         self.search_case = QLineEdit()
         self.search_case.setPlaceholderText("Cari Case ID…")
         self.search_case.setClearButtonEnabled(True)
@@ -103,6 +129,7 @@ class OverviewPanel(BasePanel):
         )
         self.case_view = QTableView()
         self.case_view.setModel(self.case_model)
+        self.case_view.setAlternatingRowColors(True)
         self.case_view.setSortingEnabled(True)
         self.case_view.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.case_view.verticalHeader().setVisible(False)
@@ -113,21 +140,25 @@ class OverviewPanel(BasePanel):
         self.case_view.doubleClicked.connect(self._on_case_double_clicked)
 
         hint = QLabel("Klik dua kali baris case untuk membuka rinciannya di Case Explorer.")
-        hint.setStyleSheet("color: gray;")
+        hint.setStyleSheet(f"color: {SLATE}; font-size: 12px;")
 
         case_layout.addLayout(case_header)
         case_layout.addWidget(self.case_view, 1)
         case_layout.addWidget(hint)
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
+        splitter.setHandleWidth(12)
         splitter.addWidget(act_widget)
         splitter.addWidget(case_widget)
         splitter.setStretchFactor(0, 1)
         splitter.setStretchFactor(1, 1)
 
         layout = QVBoxLayout(self)
-        layout.addWidget(QLabel("<h3>Overview Event Log (F02)</h3>"))
-        layout.addWidget(metrics_box)
+        layout.setContentsMargins(16, 12, 16, 12)
+        layout.setSpacing(12)
+        layout.addWidget(kicker)
+        layout.addWidget(heading)
+        layout.addLayout(metrics_row)
         layout.addWidget(splitter, 1)
 
     def set_log(self, df: pd.DataFrame, durations: pd.Series) -> None:
@@ -136,19 +167,29 @@ class OverviewPanel(BasePanel):
         self._overview = ov
         self._case_table = ov["case_table"]
 
-        self.lbl_cases.setText(f"Total Case:\n<b>{ov['total_cases']:,}</b>")
-        self.lbl_events.setText(f"Total Event:\n<b>{ov['total_events']:,}</b>")
+        self.lbl_cases.setText(
+            f"<span style='color:{SLATE};font-size:12px;'>Total Case</span><br>"
+            f"<span style='font-size:20px;font-weight:600;'>{ov['total_cases']:,}</span>"
+        )
+        self.lbl_events.setText(
+            f"<span style='color:{SLATE};font-size:12px;'>Total Event</span><br>"
+            f"<span style='font-size:20px;font-weight:600;'>{ov['total_events']:,}</span>"
+        )
 
         if ov["min_timestamp"] is not None and ov["max_timestamp"] is not None:
             t0 = ov["min_timestamp"].isoformat(sep=" ", timespec="seconds")
             t1 = ov["max_timestamp"].isoformat(sep=" ", timespec="seconds")
-            self.lbl_range.setText(f"Rentang Waktu (UTC):\n<b>{t0}</b> s/d <b>{t1}</b>")
+            self.lbl_range.setText(
+                f"<span style='color:{SLATE};font-size:12px;'>Rentang Waktu (UTC)</span><br>"
+                f"<span style='font-size:13px;font-weight:600;'>{t0}<br>s/d {t1}</span>"
+            )
         else:
             self.lbl_range.setText("Rentang Waktu:\n-")
 
         if ov["mean_cycle_days"] is not None:
             self.lbl_mean_cycle.setText(
-                f"Mean Cycle Time:\n<b>{ov['mean_cycle_days']:.3f} hari</b>"
+                f"<span style='color:{SLATE};font-size:12px;'>Mean Cycle Time</span><br>"
+                f"<span style='font-size:20px;font-weight:600;'>{ov['mean_cycle_days']:.3f} hari</span>"
             )
         else:
             self.lbl_mean_cycle.setText("Mean Cycle Time:\n-")

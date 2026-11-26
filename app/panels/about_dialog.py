@@ -11,9 +11,12 @@ from PySide6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
     QFormLayout,
+    QFrame,
     QLabel,
     QVBoxLayout,
 )
+
+from app.theme import INK, SLATE
 
 
 def _get_versions() -> dict[str, str]:
@@ -37,18 +40,24 @@ class AboutDialog(QDialog):
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self.setWindowTitle("Tentang Aplikasi — BPIC17 Event Log Analyzer")
-        self.setMinimumWidth(400)
+        self.setMinimumWidth(420)
 
         versions = _get_versions()
 
-        title = QLabel("<h3>BPIC17 Event Log Analyzer</h3>")
+        title = QLabel("BPIC17 Event Log Analyzer")
+        title.setStyleSheet(f"color: {INK}; font-size: 20px; font-weight: 600;")
         desc = QLabel(
             "Aplikasi desktop analisis event log BPIC 2017 berbasis Python, PM4Py, "
             "pandas, dan PySide6."
         )
+        desc.setStyleSheet(f"color: {SLATE}; font-size: 13px;")
         desc.setWordWrap(True)
 
-        form = QFormLayout()
+        card = QFrame()
+        card.setProperty("card", True)
+        form = QFormLayout(card)
+        form.setContentsMargins(20, 16, 20, 16)
+        form.setVerticalSpacing(8)
         for name, ver in versions.items():
             form.addRow(f"{name}:", QLabel(ver))
 
@@ -57,7 +66,9 @@ class AboutDialog(QDialog):
         buttons.accepted.connect(self.accept)
 
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(16, 14, 16, 14)
+        layout.setSpacing(12)
         layout.addWidget(title)
         layout.addWidget(desc)
-        layout.addLayout(form)
+        layout.addWidget(card)
         layout.addWidget(buttons)
